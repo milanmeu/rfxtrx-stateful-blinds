@@ -10,9 +10,9 @@ from homeassistant.const import ATTR_STATE
 from homeassistant.components.cover import (
     ATTR_POSITION,
     ATTR_TILT_POSITION,
-    CoverEntity
+    CoverEntity,
+    CoverEntityFeature
 )
-
 from homeassistant.helpers import entity_platform
 
 from ..const import (
@@ -27,8 +27,6 @@ from .const import (
     DEVICE_PACKET_SUBTYPE_BLINDST19,
     DEVICE_PACKET_TYPE_BLINDS1,
     DEVICE_PACKET_TYPE_RFY,
-    SUPPORT_SET_POSITION,
-    SUPPORT_SET_TILT_POSITION,
     SVC_UPDATE_POSITION
 )
 
@@ -92,5 +90,5 @@ async def async_define_sync_services() -> None:
             vol.Required(ATTR_STATE, default="CLOSED"): str
         },
         "async_update_cover_position",
-        [SUPPORT_SET_POSITION | SUPPORT_SET_TILT_POSITION],
+        [CoverEntityFeature.SET_POSITION | CoverEntityFeature.SET_TILT_POSITION],
     )

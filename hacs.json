@@ -1,5 +1,5 @@
 {
   "name": "RFXCOM RFXtrx Stateful Blinds",
-  "homeassistant": "2024.3.0",
+  "homeassistant": "2024.5.0",
   "render_readme": true
 }
