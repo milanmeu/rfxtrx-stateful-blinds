@@ -14,6 +14,7 @@ from homeassistant.const import (
     STATE_CLOSING,
     STATE_OPENING
 )
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.components.cover import (
     CoverEntity,
     CoverEntityFeature,
@@ -22,7 +23,8 @@ from homeassistant.components.cover import (
     ATTR_TILT_POSITION
 )
 
-from .. import DeviceTuple, RfxtrxCommandEntity, _Ts
+from .. import DeviceTuple
+from ..entity import RfxtrxCommandEntity
 from ..const import CONF_VENETIAN_BLIND_MODE
 
 from .const import (
@@ -31,9 +33,12 @@ from .const import (
     CONF_CUSTOM_ICON,
     CONF_OPEN_SECONDS,
     CONF_PARTIAL_CLOSED,
-    CONF_SIGNAL_REPETITIONS,
     CONF_SIGNAL_REPETITIONS_DELAY_MS,
+    CONF_SIGNAL_REPETITIONS,
     CONF_SYNC_SECONDS,
+    CONF_TILT_CLOSED_ICON,
+    CONF_TILT_LIFTED_ICON,
+    CONF_TILT_OPEN_ICON,
     CONF_TILT_POS1_MS,
     CONF_TILT_POS2_MS,
     DEF_CLOSE_SECONDS,
@@ -43,6 +48,9 @@ from .const import (
     DEF_PARTIAL_CLOSED,
     DEF_SIGNAL_REPETITIONS_DELAY_MS,
     DEF_SYNC_SECONDS,
+    DEF_TILT_CLOSED_ICON,
+    DEF_TILT_LIFTED_ICON,
+    DEF_TILT_OPEN_ICON,
     DEF_TILT_POS1_MS,
     DEF_TILT_POS2_MS,
 )
@@ -99,6 +107,9 @@ class AbstractTiltingCover(RfxtrxCommandEntity, CoverEntity):
         self._myattr_sync_secs = entity_info.get(CONF_SYNC_SECONDS, DEF_SYNC_SECONDS) / 1000
         self._myattr_custom_icon = entity_info.get(CONF_CUSTOM_ICON, DEF_CUSTOM_ICON)
         self._myattr_colour_open = entity_info.get(CONF_COLOUR_ICON, DEF_COLOUR_ICON)
+        self._myattr_tilt_open_icon = entity_info.get(CONF_TILT_OPEN_ICON, DEF_TILT_OPEN_ICON)
+        self._myattr_tilt_closed_icon = entity_info.get(CONF_TILT_CLOSED_ICON, DEF_TILT_CLOSED_ICON)
+        self._myattr_tilt_lifted_icon = entity_info.get(CONF_TILT_LIFTED_ICON, DEF_TILT_LIFTED_ICON)
         self._myattr_partial_is_closed = entity_info.get(CONF_PARTIAL_CLOSED, DEF_PARTIAL_CLOSED)
 
         self._myattr_tilt_pos1_secs = entity_info.get(CONF_TILT_POS1_MS, DEF_TILT_POS1_MS) / 1000
@@ -115,8 +126,18 @@ class AbstractTiltingCover(RfxtrxCommandEntity, CoverEntity):
         if self._event is None:
             old_state = await self.async_get_last_state()
             if old_state is not None:
-                old_pos = old_state.attributes['current_position']
-                old_tilt_pos = old_state.attributes['current_tilt_position']
+                try:
+                    old_pos = old_state.attributes['current_position']
+                except:
+                    _LOGGER.info("async_added_to_hass: no old_pos")
+                    old_pos = 0
+
+                try:
+                    old_tilt_pos = old_state.attributes['current_tilt_position']
+                except:
+                    _LOGGER.info("async_added_to_hass: no old_tilt_pos")
+                    old_tilt_pos = 0
+    
                 _LOGGER.info("async_added_to_hass: old_pos = " + str(old_pos) + " old_tilt = " + str(old_tilt_pos))
 
                 if old_pos < 50:
@@ -133,7 +154,7 @@ class AbstractTiltingCover(RfxtrxCommandEntity, CoverEntity):
                 if position > 85:
                     _LOGGER.debug("async_set_cover_position: RAISING cover")
                     await self._async_raise_blind()
-                    await self._async_wait_and_set_position(self._myattr_open_secs, True, TILT_MIN_STEP)
+                    # await self._async_wait_and_set_position(self._myattr_open_secs, True, TILT_MIN_STEP)
                 elif position < 15:
                     _LOGGER.debug("async_set_cover_position: closing cover to CLOSED")
                     await self._async_tilt_blind_to_step(TILT_MIN_STEP)
@@ -285,13 +306,25 @@ class AbstractTiltingCover(RfxtrxCommandEntity, CoverEntity):
     @property
     def entity_picture(self):
         if self._myattr_custom_icon:
-            icon = self._entity_picture
+            entity_picture = self._entity_picture()
+
+            _LOGGER.debug("Returned entity_picture attribute = " + entity_picture)
+            return entity_picture
+    
+        return None
+
+
+    @property
+    def icon(self) -> str | None:
+        """Icon of the entity"""
+        if not(self._myattr_custom_icon):
+            icon = self._icon()
 
             _LOGGER.debug("Returned icon attribute = " + icon)
             return icon
-    
+
         return None
-    
+
 
     @property
     def _is_moving(self) -> bool | None:
@@ -379,11 +412,29 @@ class AbstractTiltingCover(RfxtrxCommandEntity, CoverEntity):
                 "_async_wait_and_set_position: Finished blind action, state not as expected - not saving new state")
 
 
-    @property
     def _entity_picture(self) -> str | None:
-        """Return the icon property."""
+        """Return the entity_picture property."""
         raise Exception("_entity_picture has not been implemented")
 
+
+    def _icon(self) -> str | None:
+        """Return the icon property."""
+        if self._is_moving and self._myattr_tilt_open_icon != "":
+            return self._myattr_tilt_open_icon
+        elif self._myattr_is_raised and self._myattr_tilt_lifted_icon != "":
+            return self._myattr_tilt_lifted_icon
+        elif self._myattr_tilt_step == TILT_MIN_STEP and self._myattr_tilt_closed_icon != "":
+            return self._myattr_tilt_closed_icon
+        elif self._myattr_tilt_step == TILT_MID_STEP and self._myattr_tilt_open_icon != "":
+            return self._myattr_tilt_open_icon
+        else:
+            if self._myattr_partial_is_closed and self._myattr_tilt_closed_icon != "":
+                return self._myattr_tilt_closed_icon
+            elif not(self._myattr_partial_is_closed) and self._myattr_tilt_open_icon != "":
+                return self._myattr_tilt_open_icon
+
+        return None
+    
 
     async def _async_raise_blind(self):
         """Lift the cover."""

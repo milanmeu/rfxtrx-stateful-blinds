@@ -9,6 +9,10 @@ from collections.abc import Callable
 import RFXtrx as rfxtrxmod
 
 from homeassistant.core import callback
+from homeassistant.const import (
+    ATTR_MANUFACTURER,
+    ATTR_MODEL
+)
 from homeassistant.components.cover import (
     CoverEntity, 
     CoverEntityFeature,
@@ -16,7 +20,7 @@ from homeassistant.components.cover import (
     ATTR_POSITION
 )
 
-from .. import DeviceTuple, RfxtrxCommandEntity, _Ts
+from ..entity import RfxtrxCommandEntity
 
 from .const import (
     CONF_CLOSE_SECONDS,
@@ -41,10 +45,17 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 ICON_PATH = "/hacsfiles/rfxtrx-stateful-blinds-icons/icons/roller"
+MANUFACTURER_NAME = "Somfy"
+DEVICE_TYPE = "Roller Blind"
 
 LIFT_POS_CLOSED = 0
 LIFT_POS_MID = 1
 LIFT_POS_OPEN = 2
+
+ICON_BLIND_OPEN = "mdi:blinds-open"
+ICON_BLIND_MID = "mdi:blinds"
+ICON_BLIND_CLOSED = "mdi:roller-shade-closed"
+
 
 # Event 071a000002010101 Kitchen
 
@@ -63,7 +74,14 @@ class SomfyRollerBlind(RfxtrxCommandEntity, CoverEntity):
     ) -> None:
         """Initialize the SomfyRollerBlind RFXtrx cover device."""
 
+        device.type_string = DEVICE_TYPE
+
         super().__init__(device, device_id, event)
+
+        self._attr_device_info.update({
+            ATTR_MANUFACTURER: MANUFACTURER_NAME,
+            ATTR_MODEL: DEVICE_TYPE
+        })
 
         self._attr_is_closed: bool | None = True
         self._attr_current_cover_position = 0
@@ -198,26 +216,45 @@ class SomfyRollerBlind(RfxtrxCommandEntity, CoverEntity):
 
         if self._myattr_custom_icon:
             if self._is_moving:
-                icon = "move.svg"
+                entity_picture = "move.svg"
                 closed = False
             elif self._myattr_lift_step == LIFT_POS_OPEN:
-                icon = "99.svg"
+                entity_picture = "99.svg"
                 closed = False
             elif self._myattr_lift_step == LIFT_POS_MID:
-                icon = "50.svg"
+                entity_picture = "50.svg"
                 closed = self._myattr_partial_is_closed
-            elif self._myattr_lift_step == LIFT_POS_CLOSED:
-                icon = "00.svg"
+            else:
+                entity_picture = "00.svg"
                 closed = True
 
             if self._myattr_colour_open and not(closed):
-                icon = ICON_PATH + "/active/" + icon
+                entity_picture = ICON_PATH + "/active/" + entity_picture
             else:
-                icon = ICON_PATH + "/inactive/" + icon
+                entity_picture = ICON_PATH + "/inactive/" + entity_picture
+
+            _LOGGER.debug("Returned entity_picture attribute = " + entity_picture)
+            return entity_picture
+    
+        return None
+
+
+    @property
+    def icon(self) -> str | None:
+        """Icon of the entity"""
+        if not(self._myattr_custom_icon):
+            if self._is_moving:
+                icon = ICON_BLIND_MID
+            elif self._myattr_lift_step == LIFT_POS_OPEN:
+                icon = ICON_BLIND_OPEN
+            elif self._myattr_lift_step == LIFT_POS_MID:
+                icon = ICON_BLIND_MID
+            else:
+                icon = ICON_BLIND_CLOSED
 
             _LOGGER.debug("Returned icon attribute = " + icon)
             return icon
-    
+
         return None
 
 

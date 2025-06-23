@@ -73,7 +73,17 @@
           "partial_closed": "Highlight partially open as closed",
           "signal_repetitions": "Number of signal repetitions",
           "signal_repetition_delay": "Delay between signal repetitions (ms)",
-          "roller_mid_on_close": "Roller blind close to midpoint"
+          "roller_mid_on_close": "Roller blind close to midpoint",
+          "tilt_open_icon": "Optional icon for tilted open blind",
+          "tilt_closed_icon": "Optional icon for tilted closed blind",
+          "tilt_lifted_icon": "Optional icon for tilted lifted blind"
+        },
+        "data_description": {
+          "state_support": "Info on repeating signals",
+          "signal_repetition_delay": "Info on the open and close times",
+          "close_seconds": "Info on the tilting times",
+          "tilt2_ms": "Info on custom icons",
+          "partial_closed": "Info on roller blind function"
         },
         "title": "Configure device options"
       }

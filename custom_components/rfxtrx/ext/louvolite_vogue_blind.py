@@ -6,6 +6,11 @@ from typing import Any
 
 import RFXtrx as rfxtrxmod
 
+from homeassistant.const import (
+    ATTR_MANUFACTURER,
+    ATTR_MODEL
+)
+
 from .. import DeviceTuple
 
 from .abs_tilting_cover import (
@@ -18,7 +23,7 @@ from .abs_tilting_cover import (
 _LOGGER = logging.getLogger(__name__)
 
 ICON_PATH = "/hacsfiles/rfxtrx-stateful-blinds-icons/icons/vertical"
-
+MANUFACTURER_NAME = "Louvolite"
 DEVICE_TYPE = "Vogue Vertical"
 
 CMD_VOGUE_CLOSE_CW = 0x00
@@ -51,10 +56,14 @@ class LouvoliteVogueBlind(AbstractTiltingCover):
             event=event
         )
 
+        self._attr_device_info.update({
+            ATTR_MANUFACTURER: MANUFACTURER_NAME,
+            ATTR_MODEL: DEVICE_TYPE
+        })
 
-    @property
+
     def _entity_picture(self) -> str | None:
-        """Return the icon property."""
+        """Return the entity_picture property."""
         if self._is_moving:
             icon = "move.svg"
             closed = False

@@ -1,0 +1,9 @@
+{
+  "services": {
+    "send": {
+      "service": "mdi:send"
+    },
+    "update_cover_position": {
+      "service": "mdi:application-edit-outline"
+    }
+}
