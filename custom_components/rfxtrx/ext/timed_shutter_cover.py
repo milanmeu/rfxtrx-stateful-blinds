@@ -95,29 +95,29 @@ class TimedShutterCover(RfxtrxCommandEntity, CoverEntity):
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Move the cover up."""
-        if self.is_opening:
-            _LOGGER.debug("Already opening, toggle to stop")
-            await self.async_stop_cover()
-            return
-
-        _LOGGER.debug("Opening cover")
-        await self._async_move_to(100)
+        await self._async_handle_move(100, kwargs.get("skip_send", False))
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         """Move the cover down."""
-        if self.is_closing:
-            _LOGGER.debug("Already closing, toggle to stop")
-            await self.async_stop_cover()
+        await self._async_handle_move(0, kwargs.get("skip_send", False))
+
+    async def _async_handle_move(self, position: int, skip_send: bool) -> None:
+        """Internal move handler to check state."""
+        moving_up = position > self._attr_current_cover_position
+        if (moving_up and self.is_opening) or (not moving_up and self.is_closing):
+            _LOGGER.debug("Already moving in that direction, toggle to stop")
+            await self.async_stop_cover(skip_send=skip_send)
             return
 
-        _LOGGER.debug("Closing cover")
-        await self._async_move_to(0)
+        _LOGGER.debug("Moving cover to %s (skip_send=%s)", position, skip_send)
+        await self._async_move_to(position, skip_send)
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
         """Stop the cover."""
         if not self._move_task:
             return
 
+        skip_send = kwargs.get("skip_send", False)
         was_opening = self._attr_is_opening
 
         if self._move_task:
@@ -128,18 +128,21 @@ class TimedShutterCover(RfxtrxCommandEntity, CoverEntity):
         self._attr_is_closing = False
         self.async_write_ha_state()
 
-        _LOGGER.debug("Stopping cover by repeating last command")
-        if was_opening:
-            await self._async_send(self._device.send_on)
+        if not skip_send:
+            _LOGGER.debug("Stopping cover by repeating last command")
+            if was_opening:
+                await self._async_send(self._device.send_on)
+            else:
+                await self._async_send(self._device.send_off)
         else:
-            await self._async_send(self._device.send_off)
+            _LOGGER.debug("Stopping cover (remote already sent command)")
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         """Move the cover to a specific position."""
         if ATTR_POSITION in kwargs:
-            await self._async_move_to(kwargs[ATTR_POSITION])
+            await self._async_move_to(kwargs[ATTR_POSITION], False)
 
-    async def _async_move_to(self, position: int) -> None:
+    async def _async_move_to(self, position: int, skip_send: bool) -> None:
         """Move cover to a specific position."""
         if position == self._attr_current_cover_position:
             return
@@ -148,9 +151,9 @@ class TimedShutterCover(RfxtrxCommandEntity, CoverEntity):
             self._move_task.cancel()
 
         self._target_position = position
-        self._move_task = asyncio.create_task(self._async_move_task())
+        self._move_task = asyncio.create_task(self._async_move_task(skip_send))
 
-    async def _async_move_task(self) -> None:
+    async def _async_move_task(self, skip_send: bool) -> None:
         """Update position while moving."""
         start_pos = self._attr_current_cover_position
         target_pos = self._target_position
@@ -160,12 +163,15 @@ class TimedShutterCover(RfxtrxCommandEntity, CoverEntity):
         self._attr_is_closing = not moving_up
 
         # Send physical command
-        if moving_up:
-            await self._async_send(self._device.send_on)
-            duration = self._myattr_open_secs
+        if not skip_send:
+            if moving_up:
+                await self._async_send(self._device.send_on)
+                duration = self._myattr_open_secs
+            else:
+                await self._async_send(self._device.send_off)
+                duration = self._myattr_close_secs
         else:
-            await self._async_send(self._device.send_off)
-            duration = self._myattr_close_secs
+            duration = self._myattr_open_secs if moving_up else self._myattr_close_secs
 
         total_distance = abs(target_pos - start_pos)
         # Time to move the distance
@@ -246,8 +252,8 @@ class TimedShutterCover(RfxtrxCommandEntity, CoverEntity):
         # On typically opens, Off typically closes
         command = event.values.get("Command")
         if command == "On":
-            self.hass.async_create_task(self.async_open_cover())
+            self.hass.async_create_task(self.async_open_cover(skip_send=True))
         elif command == "Off":
-            self.hass.async_create_task(self.async_close_cover())
+            self.hass.async_create_task(self.async_close_cover(skip_send=True))
 
         self.async_write_ha_state()
