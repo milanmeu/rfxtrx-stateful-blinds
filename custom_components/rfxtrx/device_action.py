@@ -43,7 +43,6 @@ async def async_get_actions(
     hass: HomeAssistant, device_id: str
 ) -> list[dict[str, str]]:
     """List device actions for RFXCOM RFXtrx devices."""
-
     try:
         device = async_get_device_object(hass, device_id)
     except ValueError:

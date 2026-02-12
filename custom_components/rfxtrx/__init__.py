@@ -113,7 +113,6 @@ def _create_rfx(
     config: Mapping[str, Any], event_callback: Callable[[rfxtrxmod.RFXtrxEvent], None]
 ) -> rfxtrxmod.Connect:
     """Construct a rfx object based on config."""
-
     modes = config.get(CONF_PROTOCOLS)
 
     if modes:
@@ -172,7 +171,6 @@ async def async_setup_internal(hass: HomeAssistant, entry: ConfigEntry) -> None:
     @callback
     def async_handle_receive(event: rfxtrxmod.RFXtrxEvent) -> None:
         """Handle received messages from RFXtrx gateway."""
-
         if isinstance(event, rfxtrxmod.ConnectionLost):
             _LOGGER.warning("Connection was lost, triggering reload")
             hass.async_create_task(

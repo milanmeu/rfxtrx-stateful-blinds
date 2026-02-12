@@ -22,16 +22,23 @@ from .const import (
     CONST_VENETIAN_BLIND_MODE_US,
 )
 from .entity import RfxtrxCommandEntity
+from .ext.const import DEVICE_PACKET_SUBTYPE_LIGHTING2_AC, DEVICE_PACKET_TYPE_LIGHTING2
 
 _LOGGER = logging.getLogger(__name__)
 
 ##############################
 from .ext import cover as ext_cover
+
 ##############################
 
 
 def supported(event: rfxtrxmod.RFXtrxEvent) -> bool:
     """Return whether an event supports cover."""
+    if (
+        event.device.packettype == DEVICE_PACKET_TYPE_LIGHTING2
+        and event.device.subtype == DEVICE_PACKET_SUBTYPE_LIGHTING2_AC
+    ):
+        return True
     return bool(event.device.known_to_be_rollershutter)
 
 
@@ -50,11 +57,11 @@ async def async_setup_entry(
     ) -> list[Entity]:
         ##############################
         cover = ext_cover.create_cover_entity(
-                    device = event.device,
-                    device_id = device_id,
-                    entity_info = entity_info,
-                    event = event if auto else None,
-                )
+            device=event.device,
+            device_id=device_id,
+            entity_info=entity_info,
+            event=event if auto else None,
+        )
         if cover is not None:
             return [cover]
         ##############################
@@ -63,7 +70,7 @@ async def async_setup_entry(
             RfxtrxCover(
                 event.device,
                 device_id,
-                venetian_blind_mode = entity_info.get(CONF_VENETIAN_BLIND_MODE),
+                venetian_blind_mode=entity_info.get(CONF_VENETIAN_BLIND_MODE),
                 event=event if auto else None,
             )
         ]

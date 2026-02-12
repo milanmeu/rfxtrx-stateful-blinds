@@ -68,7 +68,9 @@ RECV_MODES = sorted(itertools.chain(*rfxtrxmod.lowlevel.Status.RECMODES))
 
 ##############################
 from .ext import config_flow as ext_config_flow
+
 ##############################
+
 
 class DeviceData(TypedDict):
     """Dict data representing a device entry."""
@@ -236,10 +238,7 @@ class RfxtrxOptionsFlow(OptionsFlow):
                     ]
 
                 ##############################
-                ext_config_flow.update_device_options(
-                    device,
-                    user_input
-                )
+                ext_config_flow.update_device_options(device, user_input)
                 ##############################
 
                 self.update_config_data(
@@ -307,9 +306,7 @@ class RfxtrxOptionsFlow(OptionsFlow):
 
         ##############################
         ext_config_flow.update_data_schema(
-            data_schema,
-            self._selected_device_object,
-            device_data
+            data_schema, self._selected_device_object, device_data
         )
         ##############################
 
@@ -657,6 +654,11 @@ class RfxtrxConfigFlow(ConfigFlow, domain=DOMAIN):
         return RfxtrxOptionsFlow()
 
 
+import logging
+
+_LOGGER = logging.getLogger(__name__)
+
+
 def _test_transport(host: str | None, port: int | None, device: str | None) -> bool:
     """Construct a rfx object based on config."""
     if port is not None:
@@ -666,7 +668,8 @@ def _test_transport(host: str | None, port: int | None, device: str | None) -> b
 
     try:
         conn.connect()
-    except (rfxtrxmod.RFXtrxTransportError, TimeoutError):
+    except (rfxtrxmod.RFXtrxTransportError, TimeoutError) as ex:
+        _LOGGER.error("Error connecting to RFXtrx: %s", ex)
         return False
 
     return True
