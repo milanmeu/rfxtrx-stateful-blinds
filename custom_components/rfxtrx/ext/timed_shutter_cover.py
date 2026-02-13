@@ -55,7 +55,7 @@ class TimedShutterCover(RfxtrxCommandEntity, CoverEntity):
         )
 
         self._attr_is_closed: bool | None = True
-        self._attr_current_cover_position = 0
+        self._attr_current_cover_position = 50
         self._attr_device_class = CoverDeviceClass.SHUTTER
 
         self._attr_supported_features = (
@@ -201,19 +201,25 @@ class TimedShutterCover(RfxtrxCommandEntity, CoverEntity):
                     )
 
                 self.async_write_ha_state()
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.2)
 
             # Finished
             self._attr_current_cover_position = target_pos
             self._attr_is_closed = self._attr_current_cover_position == 0
 
-            # Send stop command if at intermediate position
-            if 0 < target_pos < 100:
+            if target_pos in {0, 100}:
+                # Wait a moment to ensure the cover has fully stopped
+                # Then send the stop command to release the relay and allow manual operation
+                _LOGGER.debug("Cover should be fully open/closed, waiting to send stop command")
+                await asyncio.sleep(2)
+                _LOGGER.debug("The cover should now be stopped, sending stop command to release relay")
+            else:
+                # Send stop command if at intermediate position
                 _LOGGER.debug("Stopping cover at intermediate position")
-                if moving_up:
-                    await self._async_send(self._device.send_on)
-                else:
-                    await self._async_send(self._device.send_off)
+            if moving_up:
+                await self._async_send(self._device.send_on)
+            else:
+                await self._async_send(self._device.send_off)
 
         except asyncio.CancelledError:
             _LOGGER.debug("Movement cancelled")
